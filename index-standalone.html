@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>倒计时小组件 - 单文件版</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Microsoft YaHei', 'Segoe UI', Arial, sans-serif;
+      background: linear-gradient(135deg, #fef6e4, #e4f0ff);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .app-container {
+      width: 260px;
+      min-height: 140px;
+      background: rgba(255, 255, 255, var(--bg-opacity, 0.95));
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+      overflow: visible;
+      backdrop-filter: blur(10px);
+      position: fixed;
+      top: 24px;
+      left: 24px;
+      transform-origin: top left;
+      --bg-opacity: 0.95;
+    }
+
+    /* 拖动区域 */
+    .drag-handle {
+      height: 8px;
+      background: linear-gradient(90deg, #ff4444, #ff6666);
+      cursor: move;
+      border-radius: 12px 12px 0 0;
+    }
+
+    /* 主显示区域 */
+    .main-display {
+      padding: 25px 20px 10px;
+      background: transparent;
+      border-radius: 12px 12px 0 0;
+      position: relative;
+    }
+
+    /* 设置按钮 */
+    .settings-btn {
+      position: absolute;
+      top: 12px;
+      right: 15px;
+      width: 28px;
+      height: 28px;
+      border: none;
+      background: rgba(255, 68, 68, 0.1);
+      color: #666;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s;
+      opacity: 0.6;
+      z-index: 10;
+    }
+
+    .settings-btn:hover {
+      opacity: 1;
+      background: rgba(255, 68, 68, 0.2);
+      transform: scale(1.1);
+    }
+
+    .settings-btn.active {
+      opacity: 1;
+      background: rgba(255, 68, 68, 0.3);
+      color: #ff4444;
+      transform: rotate(180deg);
+    }
+
+    .time-display {
+      font-size: 48px;
+      font-weight: bold;
+      text-align: center;
+      color: #333;
+      letter-spacing: 2px;
+      transition: color 0.3s;
+      border-radius: 8px;
+      padding: 2px 10px;
+      margin: 0 auto;
+      display: inline-block;
+      width: 100%;
+    }
+
+    .time-display.running { color: #22c55e; }
+    .time-display.overtime { color: #ff4444; animation: pulse 1s infinite; }
+    .time-display.paused { color: #999; }
+
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: rgba(224, 224, 224, 1);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      border-radius: 3px;
+      transition: width 0.3s, background 0.3s;
+    }
+
+    .progress-fill.overtime { background: linear-gradient(90deg, #ff4444, #cc0000); }
+    .progress-fill.paused { background: linear-gradient(90deg, #999, #666); }
+
+    /* 控制面板 */
+    .control-panel {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s ease-out, border-top 0.3s;
+      background: rgba(248, 248, 248, 1);
+      border-top: 0 solid transparent;
+      border-radius: 0 0 12px 12px;
+    }
+
+    .control-panel.show {
+      max-height: 900px;
+      padding: 15px;
+      overflow-y: auto;
+      border-top: 1px solid #e0e0e0;
+    }
+
+    .control-panel::-webkit-scrollbar { width: 6px; }
+    .control-panel::-webkit-scrollbar-track { background: transparent; }
+    .control-panel::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+    .control-panel::-webkit-scrollbar-thumb:hover { background: #999; }
+
+    /* 快捷键设置区域 */
+    .shortcut-settings { margin-top: 15px; border-top: 1px solid #e0e0e0; padding-top: 10px; }
+    .shortcut-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 10px;
+      background: rgba(255, 68, 68, 0.05);
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.3s;
+      font-size: 13px;
+      font-weight: bold;
+      color: #333;
+    }
+    .shortcut-header:hover { background: rgba(255, 68, 68, 0.1); }
+    .toggle-icon { transition: transform 0.3s; color: #666; }
+    .shortcut-header.expanded .toggle-icon { transform: rotate(180deg); }
+    .shortcut-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+    .shortcut-content.show { max-height: 500px; padding-top: 10px; }
+    .shortcut-item { margin-bottom: 10px; }
+    .shortcut-item label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+    .shortcut-input-group { display: flex; gap: 5px; }
+    .shortcut-input-group input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 2px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 12px;
+      background: #f5f5f5;
+      color: #333;
+      text-align: center;
+    }
+    .shortcut-input-group input.recording { border-color: #ff4444; background: #fff3f3; animation: blink 1s infinite; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .record-btn {
+      padding: 6px 12px;
+      border: none;
+      background: #ff4444;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      transition: background 0.3s;
+    }
+    .record-btn:hover { background: #ff6666; }
+    .record-btn.recording { background: #22c55e; }
+    .shortcut-actions { display: flex; gap: 8px; margin-top: 12px; }
+    .shortcut-action-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      background: white;
+      border: 2px solid #ff4444;
+      color: #ff4444;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+      transition: all 0.3s;
+    }
+    .shortcut-action-btn:hover { background: #ff4444; color: white; }
+    .shortcut-tip { margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-size: 11px; color: #856404; text-align: center; }
+
+    /* 窗口大小控制 */
+    .size-control { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+    .size-control label { font-size: 12px; color: #666; display: flex; justify-content: space-between; }
+    #scaleSlider {
+      width: 100%; height: 4px; border-radius: 2px; background: #e0e0e0; outline: none; -webkit-appearance: none;
+    }
+    #scaleSlider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #ff4444; cursor: pointer; transition: transform 0.2s;
+    }
+    #scaleSlider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    /* 快捷时间自定义 */
+    .preset-config { margin-top: 15px; border-top: 1px solid #e0e0e0; padding-top: 10px; }
+    .preset-config-header {
+      display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: rgba(34, 197, 94, 0.05);
+      border-radius: 6px; cursor: pointer; transition: background 0.3s; font-size: 13px; font-weight: bold; color: #333;
+    }
+    .preset-config-header:hover { background: rgba(34, 197, 94, 0.1); }
+    .preset-config-header.expanded .toggle-icon { transform: rotate(180deg); }
+    .preset-config-content { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+    .preset-config-content.show { max-height: 300px; padding-top: 10px; }
+    .preset-config-item { margin-bottom: 10px; }
+    .preset-config-item label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+    .preset-config-item input { width: 100%; padding: 6px 10px; border: 2px solid #e0e0e0; border-radius: 4px; font-size: 12px; text-align: center; }
+    .preset-config-item input:focus { border-color: #22c55e; outline: none; }
+    .save-preset-btn { width: 100%; padding: 8px; margin-top: 10px; border: none; background: #22c55e; color: white; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; transition: background 0.3s; }
+    .save-preset-btn:hover { background: #16a34a; }
+
+    /* 快捷按钮 */
+    .preset-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+    .preset-btn {
+      flex: 1; padding: 8px; border: none; background: linear-gradient(135deg, #ff6666, #ff4444); color: white; border-radius: 6px;
+      cursor: pointer; font-size: 13px; font-weight: bold; transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .preset-btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4); }
+    .preset-btn:active { transform: translateY(0); }
+
+    /* 自定义时间 */
+    .custom-time { display: flex; gap: 8px; margin-bottom: 10px; }
+    #customMinutes {
+      flex: 1; padding: 8px; border: 2px solid #e0e0e0; border-radius: 6px; font-size: 13px; outline: none; transition: border-color 0.3s;
+    }
+    #customMinutes:focus { border-color: #ff4444; }
+    #setCustomBtn { padding: 8px 16px; border: none; background: #ff4444; color: white; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.3s; }
+    #setCustomBtn:hover { background: #ff6666; }
+
+    /* 控制按钮 */
+    .control-buttons { display: flex; gap: 8px; margin-bottom: 10px; }
+    .ctrl-btn {
+      flex: 1; padding: 10px; border: none; background: white; border: 2px solid #ff4444; color: #ff4444; border-radius: 6px;
+      cursor: pointer; font-size: 13px; font-weight: bold; transition: all 0.3s;
+    }
+    .ctrl-btn:hover { background: #ff4444; color: white; transform: translateY(-2px); }
+    .ctrl-btn:active { transform: translateY(0); }
+
+    /* 透明度控制 */
+    .opacity-control { display: flex; flex-direction: column; gap: 5px; }
+    .opacity-control label { font-size: 12px; color: #666; display: flex; justify-content: space-between; }
+    #opacitySlider { width: 100%; height: 4px; border-radius: 2px; background: #e0e0e0; outline: none; -webkit-appearance: none; }
+    #opacitySlider::-webkit-slider-thumb {
+      -webkit-appearance: none; appearance: none; width: 16px; height: 16px; border-radius: 50%; background: #ff4444; cursor: pointer; transition: transform 0.2s;
+    }
+    #opacitySlider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+    /* 右键菜单 */
+    .context-menu {
+      display: none;
+      position: fixed;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      padding: 8px 0;
+      min-width: 150px;
+      z-index: 99999;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+    }
+    .context-menu.show { display: block; }
+    .menu-item { padding: 10px 16px; cursor: pointer; font-size: 13px; color: #333; transition: background 0.2s; }
+    .menu-item:hover { background: #f5f5f5; }
+    .menu-separator { height: 1px; background: #e0e0e0; margin: 4px 0; }
+
+    @media (max-width: 300px) {
+      .time-display { font-size: 36px; }
+      .preset-buttons { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="app-container">
+    <div class="drag-handle" id="dragHandle"></div>
+
+    <div class="main-display">
+      <button class="settings-btn" id="settingsBtn" title="显示/隐藏控制面板">⚙️</button>
+      <div class="time-display" id="timeDisplay">03:00</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="control-panel" id="controlPanel">
+      <div class="preset-buttons">
+        <button class="preset-btn" data-minutes="3">3分</button>
+        <button class="preset-btn" data-minutes="4">4分</button>
+        <button class="preset-btn" data-minutes="6">6分</button>
+      </div>
+
+      <div class="custom-time">
+        <input type="number" id="customMinutes" min="1" max="60" placeholder="分钟">
+        <button id="setCustomBtn">设置</button>
+      </div>
+
+      <div class="control-buttons">
+        <button id="startBtn" class="ctrl-btn">开始</button>
+        <button id="pauseBtn" class="ctrl-btn" style="display:none;">暂停</button>
+        <button id="resetBtn" class="ctrl-btn">重置</button>
+      </div>
+
+      <div class="opacity-control">
+        <label>背景透明度: <span id="opacityValue">95</span>%</label>
+        <input type="range" id="opacitySlider" min="20" max="100" value="95">
+      </div>
+
+      <div class="size-control">
+        <label>窗口大小缩放: <span id="scaleValue">100</span>%</label>
+        <input type="range" id="scaleSlider" min="80" max="150" value="100" step="10">
+      </div>
+
+      <div class="preset-config">
+        <div class="preset-config-header" id="presetConfigHeader">
+          <span>⏱️ 自定义快捷时间</span>
+          <span class="toggle-icon" id="presetConfigToggle">▼</span>
+        </div>
+        <div class="preset-config-content" id="presetConfigContent">
+          <div class="preset-config-item">
+            <label>按钮1 (分钟)</label>
+            <input type="number" id="preset1Value" min="1" max="60" value="3">
+          </div>
+          <div class="preset-config-item">
+            <label>按钮2 (分钟)</label>
+            <input type="number" id="preset2Value" min="1" max="60" value="4">
+          </div>
+          <div class="preset-config-item">
+            <label>按钮3 (分钟)</label>
+            <input type="number" id="preset3Value" min="1" max="60" value="6">
+          </div>
+          <button id="savePresets" class="save-preset-btn">💾 保存快捷时间</button>
+        </div>
+      </div>
+
+      <div class="shortcut-settings">
+        <div class="shortcut-header" id="shortcutHeader">
+          <span>⌨️ 快捷键设置</span>
+          <span class="toggle-icon" id="shortcutToggle">▼</span>
+        </div>
+        <div class="shortcut-content" id="shortcutContent">
+          <div class="shortcut-item">
+            <label>开始/暂停</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="toggleShortcut" readonly placeholder="Ctrl+Space">
+              <button class="record-btn" data-action="toggle">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label>重置</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="resetShortcut" readonly placeholder="Ctrl+R">
+              <button class="record-btn" data-action="reset">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label id="preset3Label">3分钟</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="preset3Shortcut" readonly placeholder="Ctrl+1">
+              <button class="record-btn" data-action="preset1">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label id="preset4Label">4分钟</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="preset4Shortcut" readonly placeholder="Ctrl+2">
+              <button class="record-btn" data-action="preset2">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label id="preset6Label">6分钟</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="preset6Shortcut" readonly placeholder="Ctrl+3">
+              <button class="record-btn" data-action="preset3">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-actions">
+            <button id="saveShortcuts" class="shortcut-action-btn">💾 保存设置</button>
+            <button id="resetShortcuts" class="shortcut-action-btn">↩️ 恢复默认</button>
+          </div>
+          <div class="shortcut-tip">💡 提示：必须使用组合键（Ctrl/Alt/Shift + 其他键）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="context-menu" id="contextMenu">
+      <div class="menu-item" data-action="toggle">开始/暂停</div>
+      <div class="menu-item" data-action="reset">重置</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" data-action="preset-1">按钮1</div>
+      <div class="menu-item" data-action="preset-2">按钮2</div>
+      <div class="menu-item" data-action="preset-3">按钮3</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" data-action="toggle-panel">显示/隐藏控制</div>
+    </div>
+  </div>
+
+  <script>
+    const timerState = {
+      totalSeconds: 180,
+      remainingSeconds: 180,
+      isRunning: false,
+      isOvertime: false,
+      interval: null,
+    };
+
+    let shortcutConfig = {
+      toggle: 'Ctrl+Space',
+      reset: 'Ctrl+R',
+      preset1: 'Ctrl+1',
+      preset2: 'Ctrl+2',
+      preset3: 'Ctrl+3',
+    };
+
+    let presetTimes = { preset1: 3, preset2: 4, preset3: 6 };
+    let isRecording = false;
+    let currentRecordingAction = null;
+
+    let timeDisplay, progressFill, controlPanel, startBtn, pauseBtn, resetBtn;
+    let presetBtns, customMinutes, setCustomBtn, opacitySlider, opacityValue;
+    let contextMenu, dragHandle, settingsBtn, shortcutHeader, shortcutContent;
+    let shortcutToggle, recordBtns, saveShortcutsBtn, resetShortcutsBtn;
+    let scaleSlider, scaleValue, presetConfigHeader, presetConfigContent;
+    let preset1Value, preset2Value, preset3Value, savePresetsBtn, appContainer;
+
+    document.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      appContainer = document.getElementById('app');
+      timeDisplay = document.getElementById('timeDisplay');
+      progressFill = document.getElementById('progressFill');
+      controlPanel = document.getElementById('controlPanel');
+      startBtn = document.getElementById('startBtn');
+      pauseBtn = document.getElementById('pauseBtn');
+      resetBtn = document.getElementById('resetBtn');
+      presetBtns = document.querySelectorAll('.preset-btn');
+      customMinutes = document.getElementById('customMinutes');
+      setCustomBtn = document.getElementById('setCustomBtn');
+      opacitySlider = document.getElementById('opacitySlider');
+      opacityValue = document.getElementById('opacityValue');
+      contextMenu = document.getElementById('contextMenu');
+      dragHandle = document.getElementById('dragHandle');
+      settingsBtn = document.getElementById('settingsBtn');
+      shortcutHeader = document.getElementById('shortcutHeader');
+      shortcutContent = document.getElementById('shortcutContent');
+      shortcutToggle = document.getElementById('shortcutToggle');
+      recordBtns = document.querySelectorAll('.record-btn');
+      saveShortcutsBtn = document.getElementById('saveShortcuts');
+      resetShortcutsBtn = document.getElementById('resetShortcuts');
+      scaleSlider = document.getElementById('scaleSlider');
+      scaleValue = document.getElementById('scaleValue');
+      presetConfigHeader = document.getElementById('presetConfigHeader');
+      presetConfigContent = document.getElementById('presetConfigContent');
+      preset1Value = document.getElementById('preset1Value');
+      preset2Value = document.getElementById('preset2Value');
+      preset3Value = document.getElementById('preset3Value');
+      savePresetsBtn = document.getElementById('savePresets');
+
+      loadSavedSettings();
+      updateDisplay();
+      updatePresetButtons();
+      displayShortcuts();
+      bindEvents();
+      setupWindowDrag();
+    }
+
+    function formatTime(seconds) {
+      const isNegative = seconds < 0;
+      const absSeconds = Math.abs(seconds);
+      const mins = Math.floor(absSeconds / 60);
+      const secs = absSeconds % 60;
+      const sign = isNegative ? '+' : '';
+      return `${sign}${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    function updateDisplay() {
+      timeDisplay.textContent = formatTime(timerState.remainingSeconds);
+      const progress = timerState.isOvertime
+        ? 100
+        : Math.min(100, Math.max(0, ((timerState.totalSeconds - timerState.remainingSeconds) / Math.max(1, timerState.totalSeconds)) * 100));
+      progressFill.style.width = `${progress}%`;
+
+      timeDisplay.classList.remove('running', 'overtime', 'paused');
+      progressFill.classList.remove('overtime', 'paused');
+
+      if (timerState.isOvertime) {
+        timeDisplay.classList.add('overtime');
+        progressFill.classList.add('overtime');
+      } else if (timerState.isRunning) {
+        timeDisplay.classList.add('running');
+      } else {
+        timeDisplay.classList.add('paused');
+        progressFill.classList.add('paused');
+      }
+    }
+
+    function startTimer() {
+      if (timerState.interval) return;
+      timerState.isRunning = true;
+      startBtn.style.display = 'none';
+      pauseBtn.style.display = 'block';
+
+      timerState.interval = setInterval(() => {
+        timerState.remainingSeconds--;
+        if (timerState.remainingSeconds < 0) {
+          timerState.isOvertime = true;
+        }
+        updateDisplay();
+      }, 1000);
+      updateDisplay();
+    }
+
+    function pauseTimer() {
+      if (!timerState.interval) return;
+      clearInterval(timerState.interval);
+      timerState.interval = null;
+      timerState.isRunning = false;
+      startBtn.style.display = 'block';
+      pauseBtn.style.display = 'none';
+      updateDisplay();
+    }
+
+    function toggleTimer() {
+      if (timerState.isRunning) {
+        pauseTimer();
+      } else {
+        startTimer();
+      }
+    }
+
+    function resetTimer() {
+      pauseTimer();
+      timerState.remainingSeconds = timerState.totalSeconds;
+      timerState.isOvertime = false;
+      updateDisplay();
+    }
+
+    function setTimer(minutes) {
+      pauseTimer();
+      const safeMinutes = Math.max(1, Math.min(60, minutes));
+      timerState.totalSeconds = safeMinutes * 60;
+      timerState.remainingSeconds = safeMinutes * 60;
+      timerState.isOvertime = false;
+      updateDisplay();
+    }
+
+    function bindEvents() {
+      startBtn.addEventListener('click', startTimer);
+      pauseBtn.addEventListener('click', pauseTimer);
+      resetBtn.addEventListener('click', resetTimer);
+
+      presetBtns.forEach((btn, index) => {
+        btn.addEventListener('click', () => {
+          const minutes = presetTimes[`preset${index + 1}`];
+          setTimer(minutes);
+        });
+      });
+
+      setCustomBtn.addEventListener('click', () => {
+        const minutes = parseInt(customMinutes.value, 10);
+        if (minutes >= 1 && minutes <= 60) {
+          setTimer(minutes);
+          customMinutes.value = '';
+        }
+      });
+
+      customMinutes.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          setCustomBtn.click();
+        }
+      });
+
+      opacitySlider.addEventListener('input', (e) => {
+        const opacity = e.target.value / 100;
+        opacityValue.textContent = e.target.value;
+        document.documentElement.style.setProperty('--bg-opacity', opacity);
+        localStorage.setItem('bgOpacity', opacity);
+      });
+
+      if (settingsBtn) {
+        settingsBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const isActive = settingsBtn.classList.toggle('active');
+          controlPanel.classList.toggle('show', isActive);
+        });
+      }
+
+      if (shortcutHeader) {
+        shortcutHeader.addEventListener('click', () => {
+          shortcutContent.classList.toggle('show');
+          shortcutHeader.classList.toggle('expanded');
+        });
+      }
+
+      recordBtns.forEach((btn) => {
+        btn.addEventListener('click', () => startRecording(btn.dataset.action, btn));
+      });
+
+      if (saveShortcutsBtn) saveShortcutsBtn.addEventListener('click', saveShortcutConfig);
+      if (resetShortcutsBtn) resetShortcutsBtn.addEventListener('click', resetToDefaultShortcuts);
+
+      if (scaleSlider) {
+        scaleSlider.addEventListener('input', (e) => {
+          const scale = e.target.value / 100;
+          scaleValue.textContent = e.target.value;
+          appContainer.style.transform = `scale(${scale})`;
+          localStorage.setItem('windowScale', scale);
+        });
+      }
+
+      if (presetConfigHeader) {
+        presetConfigHeader.addEventListener('click', () => {
+          presetConfigContent.classList.toggle('show');
+          presetConfigHeader.classList.toggle('expanded');
+        });
+      }
+
+      if (savePresetsBtn) {
+        savePresetsBtn.addEventListener('click', savePresetTimes);
+      }
+
+      document.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContextMenu(e.clientX, e.clientY);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!contextMenu.contains(e.target)) {
+          contextMenu.classList.remove('show');
+        }
+      });
+
+      document.querySelectorAll('.menu-item').forEach((item) => {
+        item.addEventListener('click', () => {
+          handleMenuAction(item.dataset.action);
+          contextMenu.classList.remove('show');
+        });
+      });
+
+      document.addEventListener('keydown', handleShortcutEvent);
+    }
+
+    function handleShortcutEvent(e) {
+      if (isRecording || e.target.tagName === 'INPUT') return;
+      const pressed = normalizeShortcut(e);
+
+      const action = Object.entries(shortcutConfig).find(([, shortcut]) => shortcut === pressed)?.[0];
+      if (!action) return;
+
+      e.preventDefault();
+      switch (action) {
+        case 'toggle':
+          toggleTimer();
+          break;
+        case 'reset':
+          resetTimer();
+          break;
+        case 'preset1':
+          setTimer(presetTimes.preset1);
+          break;
+        case 'preset2':
+          setTimer(presetTimes.preset2);
+          break;
+        case 'preset3':
+          setTimer(presetTimes.preset3);
+          break;
+      }
+    }
+
+    function normalizeShortcut(e) {
+      const keys = [];
+      if (e.ctrlKey) keys.push('Ctrl');
+      if (e.altKey) keys.push('Alt');
+      if (e.shiftKey) keys.push('Shift');
+      if (e.metaKey) keys.push('Meta');
+      const mainKey = e.key;
+      if (!['Control', 'Alt', 'Shift', 'Meta'].includes(mainKey)) {
+        keys.push(mainKey.length === 1 ? mainKey.toUpperCase() : mainKey);
+      }
+      return keys.join('+');
+    }
+
+    function showContextMenu(x, y) {
+      contextMenu.style.left = `${x}px`;
+      contextMenu.style.top = `${y}px`;
+      contextMenu.classList.add('show');
+    }
+
+    function handleMenuAction(action) {
+      switch (action) {
+        case 'toggle':
+          toggleTimer();
+          break;
+        case 'reset':
+          resetTimer();
+          break;
+        case 'preset-1':
+          setTimer(presetTimes.preset1);
+          break;
+        case 'preset-2':
+          setTimer(presetTimes.preset2);
+          break;
+        case 'preset-3':
+          setTimer(presetTimes.preset3);
+          break;
+        case 'toggle-panel':
+          controlPanel.classList.toggle('show');
+          settingsBtn.classList.toggle('active', controlPanel.classList.contains('show'));
+          break;
+      }
+    }
+
+    function loadSavedSettings() {
+      const savedShortcuts = localStorage.getItem('shortcutConfig');
+      if (savedShortcuts) {
+        try { shortcutConfig = JSON.parse(savedShortcuts); } catch (e) { console.error('加载快捷键失败', e); }
+      }
+
+      const savedPresets = localStorage.getItem('presetTimes');
+      if (savedPresets) {
+        try { presetTimes = JSON.parse(savedPresets); } catch (e) { console.error('加载快捷时间失败', e); }
+      }
+
+      const savedOpacity = localStorage.getItem('bgOpacity');
+      if (savedOpacity) {
+        const opacity = parseFloat(savedOpacity);
+        document.documentElement.style.setProperty('--bg-opacity', opacity);
+        opacitySlider.value = Math.round(opacity * 100);
+        opacityValue.textContent = Math.round(opacity * 100);
+      }
+
+      const savedScale = localStorage.getItem('windowScale');
+      if (savedScale) {
+        const scale = parseFloat(savedScale);
+        appContainer.style.transform = `scale(${scale})`;
+        scaleSlider.value = Math.round(scale * 100);
+        scaleValue.textContent = Math.round(scale * 100);
+      }
+
+      const savedPosition = localStorage.getItem('widgetPosition');
+      if (savedPosition) {
+        try {
+          const { left, top } = JSON.parse(savedPosition);
+          appContainer.style.left = left;
+          appContainer.style.top = top;
+        } catch (e) {
+          console.error('加载位置失败', e);
+        }
+      }
+    }
+
+    function displayShortcuts() {
+      const toggleInput = document.getElementById('toggleShortcut');
+      const resetInput = document.getElementById('resetShortcut');
+      const preset1Input = document.getElementById('preset3Shortcut');
+      const preset2Input = document.getElementById('preset4Shortcut');
+      const preset3Input = document.getElementById('preset6Shortcut');
+
+      if (toggleInput) toggleInput.value = shortcutConfig.toggle;
+      if (resetInput) resetInput.value = shortcutConfig.reset;
+      if (preset1Input) preset1Input.value = shortcutConfig.preset1;
+      if (preset2Input) preset2Input.value = shortcutConfig.preset2;
+      if (preset3Input) preset3Input.value = shortcutConfig.preset3;
+    }
+
+    function startRecording(action, btn) {
+      if (isRecording) return;
+      isRecording = true;
+      currentRecordingAction = action;
+
+      const input = document.getElementById(action + 'Shortcut');
+      input.value = '按下组合键...';
+      input.classList.add('recording');
+      btn.textContent = '录制中';
+      btn.classList.add('recording');
+
+      document.addEventListener('keydown', recordKeyPress);
+    }
+
+    function recordKeyPress(e) {
+      if (!isRecording) return;
+      e.preventDefault();
+      e.stopPropagation();
+
+      const keys = [];
+      if (e.ctrlKey) keys.push('Ctrl');
+      if (e.altKey) keys.push('Alt');
+      if (e.shiftKey) keys.push('Shift');
+      if (e.metaKey) keys.push('Meta');
+      const mainKey = e.key;
+
+      if (!['Control', 'Alt', 'Shift', 'Meta'].includes(mainKey)) {
+        if (keys.length > 0) {
+          keys.push(mainKey.length === 1 ? mainKey.toUpperCase() : mainKey);
+          const shortcut = keys.join('+');
+          shortcutConfig[currentRecordingAction] = shortcut;
+
+          const input = document.getElementById(currentRecordingAction + 'Shortcut');
+          input.value = shortcut;
+          input.classList.remove('recording');
+
+          const btn = document.querySelector(`[data-action="${currentRecordingAction}"]`);
+          btn.textContent = '录制';
+          btn.classList.remove('recording');
+
+          isRecording = false;
+          currentRecordingAction = null;
+          document.removeEventListener('keydown', recordKeyPress);
+        } else {
+          const input = document.getElementById(currentRecordingAction + 'Shortcut');
+          input.value = '必须使用组合键！';
+          setTimeout(() => {
+            input.value = shortcutConfig[currentRecordingAction];
+            input.classList.remove('recording');
+            const btn = document.querySelector(`[data-action="${currentRecordingAction}"]`);
+            btn.textContent = '录制';
+            btn.classList.remove('recording');
+            isRecording = false;
+            currentRecordingAction = null;
+            document.removeEventListener('keydown', recordKeyPress);
+          }, 1500);
+        }
+      }
+    }
+
+    function saveShortcutConfig() {
+      localStorage.setItem('shortcutConfig', JSON.stringify(shortcutConfig));
+      const btn = saveShortcutsBtn;
+      const originalText = btn.textContent;
+      btn.textContent = '✅ 已保存';
+      btn.style.background = '#22c55e';
+      btn.style.borderColor = '#22c55e';
+      btn.style.color = 'white';
+
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+        btn.style.borderColor = '';
+        btn.style.color = '';
+      }, 2000);
+    }
+
+    function resetToDefaultShortcuts() {
+      shortcutConfig = {
+        toggle: 'Ctrl+Space',
+        reset: 'Ctrl+R',
+        preset1: 'Ctrl+1',
+        preset2: 'Ctrl+2',
+        preset3: 'Ctrl+3',
+      };
+      displayShortcuts();
+      saveShortcutConfig();
+    }
+
+    function updatePresetButtons() {
+      if (presetBtns && presetBtns.length >= 3) {
+        presetBtns[0].textContent = `${presetTimes.preset1}分`;
+        presetBtns[1].textContent = `${presetTimes.preset2}分`;
+        presetBtns[2].textContent = `${presetTimes.preset3}分`;
+      }
+
+      document.getElementById('preset3Label').textContent = `${presetTimes.preset1}分钟`;
+      document.getElementById('preset4Label').textContent = `${presetTimes.preset2}分钟`;
+      document.getElementById('preset6Label').textContent = `${presetTimes.preset3}分钟`;
+
+      if (preset1Value) preset1Value.value = presetTimes.preset1;
+      if (preset2Value) preset2Value.value = presetTimes.preset2;
+      if (preset3Value) preset3Value.value = presetTimes.preset3;
+    }
+
+    function savePresetTimes() {
+      presetTimes = {
+        preset1: parseInt(preset1Value.value, 10) || 3,
+        preset2: parseInt(preset2Value.value, 10) || 4,
+        preset3: parseInt(preset3Value.value, 10) || 6,
+      };
+
+      localStorage.setItem('presetTimes', JSON.stringify(presetTimes));
+      updatePresetButtons();
+
+      const btn = savePresetsBtn;
+      const originalText = btn.textContent;
+      btn.textContent = '✅ 已保存';
+      btn.style.background = '#16a34a';
+
+      setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.background = '';
+      }, 2000);
+    }
+
+    function setupWindowDrag() {
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let initialLeft = 0;
+      let initialTop = 0;
+
+      dragHandle.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+        const rect = appContainer.getBoundingClientRect();
+        initialLeft = rect.left;
+        initialTop = rect.top;
+        document.body.style.userSelect = 'none';
+      });
+
+      document.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - startX;
+        const deltaY = e.clientY - startY;
+        const newLeft = initialLeft + deltaX;
+        const newTop = initialTop + deltaY;
+        appContainer.style.left = `${newLeft}px`;
+        appContainer.style.top = `${newTop}px`;
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.style.userSelect = '';
+        localStorage.setItem('widgetPosition', JSON.stringify({ left: appContainer.style.left, top: appContainer.style.top }));
+      });
+    }
+  </script>
+</body>
+</html>
