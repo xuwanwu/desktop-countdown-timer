@@ -1,0 +1,50 @@
+name: Build Windows
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: tauri-version/package-lock.json
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+      
+      - name: Install dependencies
+        working-directory: tauri-version
+        run: npm install
+      
+      - name: Build Tauri app for Windows
+        working-directory: tauri-version
+        run: npm run tauri build -- --target x86_64-pc-windows-msvc
+      
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-installer
+          path: tauri-version/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis/*.exe
+      
+      - name: Upload Windows portable
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-portable
+          path: tauri-version/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/portable/*.exe
+
+

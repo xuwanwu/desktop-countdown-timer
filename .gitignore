@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build output
+dist/
+build/
+out/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+
+# Electron
+*.exe
+*.dmg
+*.app
+*.deb
+*.rpm
+*.AppImage
+
+# electron-builder output
+release/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Temporary files
+*.tmp
+*.temp
+~*
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+
+# 保留assets文件夹但忽略其中的临时文件
+assets/*.tmp
+assets/*.temp
+
+# 但保留图标说明
+!assets/图标说明.txt
+

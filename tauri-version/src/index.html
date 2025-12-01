@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>倒计时小组件</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+    <!-- 拖动区域 -->
+    <div class="drag-handle" id="dragHandle"></div>
+    
+    <!-- 主显示区域 -->
+    <div class="main-display">
+      <button class="settings-btn" id="settingsBtn" title="显示/隐藏控制面板">⚙️</button>
+      <div class="time-display" id="timeDisplay">03:00</div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+    
+    <!-- 控制面板（默认隐藏，鼠标悬停或双击显示） -->
+    <div class="control-panel" id="controlPanel">
+      <!-- 快捷时间按钮 -->
+      <div class="preset-buttons">
+        <button class="preset-btn" data-minutes="3">3分</button>
+        <button class="preset-btn" data-minutes="4">4分</button>
+        <button class="preset-btn" data-minutes="6">6分</button>
+      </div>
+      
+      <!-- 自定义时间输入 -->
+      <div class="custom-time">
+        <input type="number" id="customMinutes" min="1" max="60" placeholder="分钟">
+        <button id="setCustomBtn">设置</button>
+      </div>
+      
+      <!-- 控制按钮 -->
+      <div class="control-buttons">
+        <button id="startBtn" class="ctrl-btn">开始</button>
+        <button id="pauseBtn" class="ctrl-btn" style="display:none;">暂停</button>
+        <button id="resetBtn" class="ctrl-btn">重置</button>
+      </div>
+      
+      <!-- 透明度滑块 -->
+      <div class="opacity-control">
+        <label>背景透明度: <span id="opacityValue">95</span>%</label>
+        <input type="range" id="opacitySlider" min="20" max="100" value="95">
+      </div>
+      
+      <!-- 窗口大小设置 -->
+      <div class="size-control">
+        <label>窗口大小缩放: <span id="scaleValue">100</span>%</label>
+        <input type="range" id="scaleSlider" min="80" max="150" value="100" step="10">
+      </div>
+      
+      <!-- 快捷时间自定义 -->
+      <div class="preset-config">
+        <div class="preset-config-header" id="presetConfigHeader">
+          <span>⏱️ 自定义快捷时间</span>
+          <span class="toggle-icon" id="presetConfigToggle">▼</span>
+        </div>
+        <div class="preset-config-content" id="presetConfigContent">
+          <div class="preset-config-item">
+            <label>按钮1 (分钟)</label>
+            <input type="number" id="preset1Value" min="1" max="60" value="3">
+          </div>
+          <div class="preset-config-item">
+            <label>按钮2 (分钟)</label>
+            <input type="number" id="preset2Value" min="1" max="60" value="4">
+          </div>
+          <div class="preset-config-item">
+            <label>按钮3 (分钟)</label>
+            <input type="number" id="preset3Value" min="1" max="60" value="6">
+          </div>
+          <button id="savePresets" class="save-preset-btn">💾 保存快捷时间</button>
+        </div>
+      </div>
+      
+      <!-- 快捷键设置 -->
+      <div class="shortcut-settings">
+        <div class="shortcut-header" id="shortcutHeader">
+          <span>⌨️ 快捷键设置</span>
+          <span class="toggle-icon" id="shortcutToggle">▼</span>
+        </div>
+        <div class="shortcut-content" id="shortcutContent">
+          <div class="shortcut-item">
+            <label>开始/暂停</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="toggleShortcut" readonly placeholder="Ctrl+Space">
+              <button class="record-btn" data-action="toggle">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label>重置</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="resetShortcut" readonly placeholder="Ctrl+R">
+              <button class="record-btn" data-action="reset">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label id="preset3Label">3分钟</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="preset3Shortcut" readonly placeholder="Ctrl+1">
+              <button class="record-btn" data-action="preset3">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label id="preset4Label">4分钟</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="preset4Shortcut" readonly placeholder="Ctrl+2">
+              <button class="record-btn" data-action="preset4">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-item">
+            <label id="preset6Label">6分钟</label>
+            <div class="shortcut-input-group">
+              <input type="text" id="preset6Shortcut" readonly placeholder="Ctrl+3">
+              <button class="record-btn" data-action="preset6">录制</button>
+            </div>
+          </div>
+          <div class="shortcut-actions">
+            <button id="saveShortcuts" class="shortcut-action-btn">💾 保存设置</button>
+            <button id="resetShortcuts" class="shortcut-action-btn">↩️ 恢复默认</button>
+          </div>
+          <div class="shortcut-tip">💡 提示：必须使用组合键（Ctrl/Alt/Shift + 其他键）</div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 右键菜单 -->
+    <div class="context-menu" id="contextMenu">
+      <div class="menu-item" data-action="toggle">开始/暂停</div>
+      <div class="menu-item" data-action="reset">重置</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" data-action="preset-3">3分钟</div>
+      <div class="menu-item" data-action="preset-4">4分钟</div>
+      <div class="menu-item" data-action="preset-6">6分钟</div>
+      <div class="menu-separator"></div>
+      <div class="menu-item" data-action="toggle-panel">显示/隐藏控制</div>
+    </div>
+  </div>
+  
+  <script type="module" src="main.js"></script>
+</body>
+</html>
+
+
+

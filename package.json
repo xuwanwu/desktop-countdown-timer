@@ -1,0 +1,65 @@
+{
+  "name": "desktop-countdown-timer",
+  "version": "1.0.13",
+  "description": "桌面悬浮倒计时小组件",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "build:portable": "electron-builder --win portable",
+    "build:all": "electron-builder --win"
+  },
+  "keywords": [
+    "countdown",
+    "timer",
+    "desktop",
+    "electron"
+  ],
+  "author": "Desktop Timer",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.0"
+  },
+  "dependencies": {},
+  "build": {
+    "appId": "com.countdown.timer",
+    "productName": "倒计时小组件",
+    "copyright": "Copyright © 2025",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "${productName}-${version}-Setup.${ext}",
+      "publisherName": "Desktop Timer"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "倒计时小组件",
+      "perMachine": false,
+      "language": "2052"
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-Portable.${ext}"
+    }
+  }
+}
+

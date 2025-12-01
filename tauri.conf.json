@@ -1,0 +1,74 @@
+{
+  "build": {
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "",
+    "devPath": "../src",
+    "distDir": "../src",
+    "withGlobalTauri": false
+  },
+  "package": {
+    "productName": "倒计时小组件",
+    "version": "2.0.0"
+  },
+  "tauri": {
+    "allowlist": {
+      "all": false,
+      "window": {
+        "all": true,
+        "close": true,
+        "hide": true,
+        "show": true,
+        "setPosition": true,
+        "setSize": true,
+        "setAlwaysOnTop": true,
+        "setVisibleOnAllWorkspaces": true
+      },
+      "path": {
+        "all": true
+      },
+      "fs": {
+        "all": true,
+        "scope": ["$APPDATA/**", "$APPDATA/*"]
+      }
+    },
+    "windows": [
+      {
+        "title": "倒计时小组件",
+        "width": 250,
+        "height": 110,
+        "resizable": false,
+        "fullscreen": false,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": false
+      }
+    ],
+    "bundle": {
+      "active": true,
+      "targets": "all",
+      "identifier": "com.countdown.timer",
+      "icon": [
+        "icons/32x32.png",
+        "icons/128x128.png",
+        "icons/128x128@2x.png",
+        "icons/icon.icns",
+        "icons/icon.ico"
+      ],
+      "resources": [],
+      "externalBin": [],
+      "copyright": "Copyright © 2025",
+      "category": "Utility",
+      "shortDescription": "桌面悬浮倒计时工具",
+      "longDescription": "一个功能强大的桌面倒计时工具，支持全屏PPT上方显示"
+    },
+    "updater": {
+      "active": false
+    },
+    "security": {
+      "csp": null
+    }
+  }
+}
+
+

@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建应用图标</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #ff4444;
+            text-align: center;
+        }
+        .canvas-container {
+            text-align: center;
+            margin: 30px 0;
+        }
+        canvas {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            cursor: crosshair;
+        }
+        .controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        label {
+            font-size: 14px;
+            color: #666;
+        }
+        input[type="color"],
+        input[type="text"],
+        select {
+            padding: 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        button {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, #ff6666, #ff4444);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .preset-icons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .preset-icon {
+            padding: 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .preset-icon:hover {
+            border-color: #ff4444;
+            transform: translateY(-3px);
+            box-shadow: 0 4px 12px rgba(255, 68, 68, 0.3);
+        }
+        .preset-icon canvas {
+            border: none;
+        }
+        .instructions {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #ffc107;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #856404;
+        }
+        .instructions ol {
+            margin-bottom: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⏰ 创建应用图标</h1>
+        
+        <div class="instructions">
+            <h3>📝 使用说明</h3>
+            <ol>
+                <li>选择下面的预设图标，或自定义设计</li>
+                <li>点击"下载图标"按钮</li>
+                <li>将下载的文件重命名为 <code>icon.png</code></li>
+                <li>放入项目的 <code>assets</code> 文件夹</li>
+                <li>运行打包命令即可</li>
+            </ol>
+        </div>
+
+        <h2>🎨 预设图标（点击选择）</h2>
+        <div class="preset-icons" id="presetIcons"></div>
+
+        <h2>✏️ 自定义设计</h2>
+        <div class="canvas-container">
+            <canvas id="iconCanvas" width="512" height="512"></canvas>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label>背景颜色</label>
+                <input type="color" id="bgColor" value="#ff4444">
+            </div>
+            <div class="control-group">
+                <label>文字颜色</label>
+                <input type="color" id="textColor" value="#ffffff">
+            </div>
+            <div class="control-group">
+                <label>文字内容</label>
+                <input type="text" id="iconText" value="⏰" maxlength="2">
+            </div>
+            <div class="control-group">
+                <label>图标风格</label>
+                <select id="iconStyle">
+                    <option value="round">圆形</option>
+                    <option value="roundSquare" selected>圆角方形</option>
+                    <option value="square">方形</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="text-align: center;">
+            <button onclick="updateIcon()">🔄 更新预览</button>
+            <button onclick="downloadIcon()">⬇️ 下载图标</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('iconCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 预设图标配置
+        const presets = [
+            { bg: '#ff4444', text: '⏰', style: 'roundSquare', name: '红色时钟' },
+            { bg: '#ff6666', text: '⏱️', style: 'roundSquare', name: '粉红秒表' },
+            { bg: '#22c55e', text: '⏲️', style: 'roundSquare', name: '绿色计时' },
+            { bg: '#ff4444', text: 'T', style: 'round', name: '红色T' },
+            { bg: '#4444ff', text: '⏰', style: 'round', name: '蓝色时钟' },
+            { bg: '#ff8800', text: '⏱️', style: 'square', name: '橙色秒表' }
+        ];
+
+        // 绘制图标
+        function drawIcon(targetCanvas, bgColor, textColor, text, style) {
+            const targetCtx = targetCanvas.getContext('2d');
+            const size = targetCanvas.width;
+            
+            // 清空画布
+            targetCtx.clearRect(0, 0, size, size);
+            
+            // 绘制背景
+            targetCtx.fillStyle = bgColor;
+            
+            switch(style) {
+                case 'round':
+                    targetCtx.beginPath();
+                    targetCtx.arc(size/2, size/2, size/2, 0, Math.PI * 2);
+                    targetCtx.fill();
+                    break;
+                case 'roundSquare':
+                    const radius = size * 0.15;
+                    targetCtx.beginPath();
+                    targetCtx.moveTo(radius, 0);
+                    targetCtx.lineTo(size - radius, 0);
+                    targetCtx.quadraticCurveTo(size, 0, size, radius);
+                    targetCtx.lineTo(size, size - radius);
+                    targetCtx.quadraticCurveTo(size, size, size - radius, size);
+                    targetCtx.lineTo(radius, size);
+                    targetCtx.quadraticCurveTo(0, size, 0, size - radius);
+                    targetCtx.lineTo(0, radius);
+                    targetCtx.quadraticCurveTo(0, 0, radius, 0);
+                    targetCtx.fill();
+                    break;
+                case 'square':
+                    targetCtx.fillRect(0, 0, size, size);
+                    break;
+            }
+            
+            // 绘制文字/emoji
+            targetCtx.fillStyle = textColor;
+            targetCtx.textAlign = 'center';
+            targetCtx.textBaseline = 'middle';
+            
+            // 检测是否是emoji
+            const isEmoji = /[\u{1F000}-\u{1F9FF}]/u.test(text);
+            if (isEmoji) {
+                targetCtx.font = `${size * 0.5}px Arial`;
+            } else {
+                targetCtx.font = `bold ${size * 0.6}px Arial`;
+            }
+            
+            targetCtx.fillText(text, size/2, size/2);
+        }
+
+        // 更新主画布
+        function updateIcon() {
+            const bgColor = document.getElementById('bgColor').value;
+            const textColor = document.getElementById('textColor').value;
+            const text = document.getElementById('iconText').value || '⏰';
+            const style = document.getElementById('iconStyle').value;
+            
+            drawIcon(canvas, bgColor, textColor, text, style);
+        }
+
+        // 下载图标
+        function downloadIcon() {
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'icon.png';
+                a.click();
+                URL.revokeObjectURL(url);
+                
+                alert('✅ 图标已下载！\n\n请将文件放入项目的 assets 文件夹中。');
+            });
+        }
+
+        // 创建预设图标
+        function createPresets() {
+            const container = document.getElementById('presetIcons');
+            
+            presets.forEach((preset, index) => {
+                const div = document.createElement('div');
+                div.className = 'preset-icon';
+                
+                const previewCanvas = document.createElement('canvas');
+                previewCanvas.width = 100;
+                previewCanvas.height = 100;
+                
+                drawIcon(previewCanvas, preset.bg, '#ffffff', preset.text, preset.style);
+                
+                const name = document.createElement('div');
+                name.textContent = preset.name;
+                name.style.marginTop = '10px';
+                name.style.fontSize = '14px';
+                name.style.color = '#666';
+                
+                div.appendChild(previewCanvas);
+                div.appendChild(name);
+                
+                div.onclick = () => {
+                    document.getElementById('bgColor').value = preset.bg;
+                    document.getElementById('textColor').value = '#ffffff';
+                    document.getElementById('iconText').value = preset.text;
+                    document.getElementById('iconStyle').value = preset.style;
+                    updateIcon();
+                };
+                
+                container.appendChild(div);
+            });
+        }
+
+        // 监听输入变化
+        document.getElementById('bgColor').addEventListener('input', updateIcon);
+        document.getElementById('textColor').addEventListener('input', updateIcon);
+        document.getElementById('iconText').addEventListener('input', updateIcon);
+        document.getElementById('iconStyle').addEventListener('change', updateIcon);
+
+        // 初始化
+        createPresets();
+        updateIcon();
+    </script>
+</body>
+</html>
+
+
+
