@@ -1,0 +1,104 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（例如：1.0.13）'
+        required: true
+        default: '1.0.13'
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+      
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+      
+      - name: 获取版本号
+        id: get_version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          fi
+      
+      - name: 安装依赖
+        run: npm install
+      
+      - name: 构建 NSIS 安装程序
+        run: npm run build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: 构建便携版
+        run: npm run build:portable
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+      
+      - name: 列出构建产物
+        shell: bash
+        run: |
+          echo "=== dist 目录内容 ==="
+          ls -lah dist/ || echo "dist 目录不存在"
+          echo ""
+          echo "=== dist_windows 目录内容 ==="
+          ls -lah dist_windows/ || echo "dist_windows 目录不存在"
+      
+      - name: 上传 NSIS 安装程序
+        uses: actions/upload-artifact@v4
+        with:
+          name: 倒计时小组件-${{ steps.get_version.outputs.VERSION }}-Setup
+          path: |
+            dist/*.exe
+            dist/**/*.exe
+          if-no-files-found: error
+      
+      - name: 上传便携版
+        uses: actions/upload-artifact@v4
+        if: success() || failure()
+        with:
+          name: 倒计时小组件-${{ steps.get_version.outputs.VERSION }}-Portable
+          path: |
+            dist/*Portable*.exe
+            dist/**/*Portable*.exe
+          if-no-files-found: warn
+      
+      - name: 创建 GitHub Release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/*.exe
+            dist/**/*.exe
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          name: 版本 ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## 🎉 桌面倒计时小组件 v${{ steps.get_version.outputs.VERSION }}
+            
+            ### 📦 下载
+            - **安装版**：倒计时小组件-${{ steps.get_version.outputs.VERSION }}-Setup.exe
+            - **便携版**：倒计时小组件-${{ steps.get_version.outputs.VERSION }}-Portable.exe
+            
+            ### 📝 更新内容
+            请查看 [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md)
+            
+            ### 💡 使用说明
+            请查看 [README.md](https://github.com/${{ github.repository }}/blob/main/README.md)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
